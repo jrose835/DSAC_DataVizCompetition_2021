@@ -1,11 +1,16 @@
 ---
-title: "DSAC Data Viz Competition 2021"
-author: "Jrose"
-date: "12/30/2021"
+title: 'DSAC Data Viz Competition 2021'
+date: 2022-1-2
+permalink: /posts/2022/1/DSAC-DVA-2021/
+tags:
+  - Data viz
+  - Competition
+  - Holiday
 output: html_document
 ---
 
-Competeing in the 2021 DSAC DVA competition!
+
+Hi all! The following is the work I did for the 2021 Emory DSAC data visualization competition! If you're interested in a little holiday cheer with data check it out below!
 
 Package Setup:
 ```{r message=FALSE}
@@ -16,7 +21,6 @@ library(forcats)
 library(gganimate)
 ```
 
-
 Task: Create a plot using the folowing datasets... 
 
 1. Christmas songs in the Billboard top 100 list during December from 1958 to 2017 (christmas_billboard_data.csv)
@@ -25,7 +29,7 @@ Task: Create a plot using the folowing datasets...
 
 3. The gifts and the quantity of gifts acquired each day in "12 days of Christmas" (12_Days_of_Christmas.csv)
 
-Here are the datasets:
+Here are the first two datasets:
 
 ```{r}
 weather <- read_csv(file="datasets/ChicagoWeatherChristmas.csv") %>% clean_names()
@@ -34,7 +38,7 @@ songs <- read_csv("datasets/christmas_billboard_data.csv") %>% clean_names()
 
 ## First let's take a look at the weather
 
-It should be easier to visualize this data by decade instead of each individual year.
+There's a lot of data here! It should be easier to visualize this data by decade instead of each individual year I think. 
 
 After that I want to do things like: 
  
@@ -61,7 +65,9 @@ white_xmas <- weather_defined %>% group_by(decade) %>%
 white_xmas
 ```
 
-Now let's plot it in a festive way!
+Great! Data seems to be tidied up exactly how I want it. 
+
+### Now let's plot it in a festive way!
 
 ```{r}
 ggplot(white_xmas, aes(x=decade, y=total_snow)) + geom_line() + geom_point(aes(size=n), color="white") + theme_minimal() + scale_x_continuous(breaks=unique(white_xmas$decade)) + labs(x="Decade", y="Total Chirstmas Snowfall (inches)", size="# White Christmases") +
@@ -76,12 +82,21 @@ ggtitle("It Still Snows on Christmas in Chicago", subtitle = "...just not as muc
 ggsave("StillSnows.jpg", height=5, width=8)
 ```
 
+#### Some insights:
+
+* The number of white christmas's in Chichago has not really changed from decade to decade.
+
+* HOWEVER the amount total snow on christmas day seems to be consistently less over the last 4 decades. Something to do with global warming and delayed winter weather perhaps?
 
 ## Now on to the holiday songs!
+
+First I need to code the song variable as a factor so I can group and plot effectively with it
 
 ```{r}
 songs$song <- factor(songs$song)
 ```
+
+### How long till Christmas?
 
 One interesting metric is how far away from the actual date of Christmas each of these weeks are. Let's normalize the time component to 12/25 and see what it looks like.
 
@@ -102,19 +117,24 @@ songs <- mutate(songs, xmas_dist = as.numeric(difftime(week_date, xmas, units="d
 summary(songs$xmas_dist)
 ```
 
-Now summarize by decade again to decluter the plot
+Now summarize/facet by decade again to decluter the plot
 
 ```{r}
 songs <- mutate(songs, decade= year-(year %% 10))
 songs$decade <- factor(songs$decade, ordered = T)
 summary(songs$decade)
+ggplot(songs, aes(x=xmas_dist, y=week_position, group=song)) + geom_line(aes(color=decade)) + scale_y_reverse() + facet_wrap(vars(decade))
 ```
 
-Interesting in itself that there are so many more in the 1960s than any other decade
+Interesting in itself that there are so many more in the 1960s than any other decade.
+
+Also, the songs seem to follow a parabolic arc here,possibly because we selected for ONLY holiday songs in this dataset. Most gradually start rising in position on the charts until you get a week or so past Christmas. Then many of them have a rather sharp drop off!
+
+### What are the greatest Holiday hits?
 
 Below I am doing a few things. First, I want to calculate a single score to measure the "hit potential" of each song over these holiday months. I call this the "hit score", and it is calculated by taking (100/peak_position) * weeks on the charts. 
 
-The higher the hit score, the higher and longer a particular song was on the charts for. 
+**The higher the hit score, the higher and longer a particular song was on the charts for.** 
 
 ```{r}
 hit_score <- songs %>% group_by(performer, songid) %>% 
@@ -130,7 +150,9 @@ songs2 <- left_join(songs, select(hit_score, songid, hit_score), by="songid")
 songs2[songs2$songid=="BelieveBrooks & Dunn",]$hit_score <- 34
 ```
 
-Now I want to rank each of the songs by hit_score based on the year and ALL previous years. This way we can see which decades generated the most chart-topping songs 
+Now I want to rank each of the songs by hit_score based on the year and ALL previous years. This way we can see which decades generated the most chart-topping songs, and how this changed over the years.
+
+I'm also going to rank the songs by hit score in each year to see what people were caroling to the most over the years.
 
 ```{r}
 songs_list <- list()
@@ -155,7 +177,7 @@ songs_big_df <- mutate(songs_big_df,
                        label = paste(song, performer, year, sep=" "))
 ```
 
-And animate it all over time!
+And finally now I will animate it all over time and beautify it!
 
 ```{r}
 color_pal <- c("1950"="#3C4930", "1960"="#8AAEE2", "1970"="#A6001D",
@@ -219,10 +241,11 @@ animate(animation, duration=30,fps=20, width=450, height=600,
         renderer=gifski_renderer("holidayhits.gif"))
 ```
 
-## Now I'll use my "Days to Christmas" variable to make some plots
+## Now let's bring it together
+
+I'll use my "Days to Christmas" variable to make some plots of the absolute greatest Holiday hits of all time (according to hit score) to see how their trajectory went!
 
 ```{r}
-
 top_song <- subset(songs, songid=="This One's For The ChildrenNew Kids On The Block"|
                      songid =="MistletoeJustin Bieber" |
                      songid == "AmenThe Impressions" |
@@ -230,10 +253,22 @@ top_song <- subset(songs, songid=="This One's For The ChildrenNew Kids On The Bl
                      songid =="Same Old Lang SyneDan Fogelberg") %>%
             mutate(label = paste(song, performer, sep=" "))
 top_song <- top_song %>% group_by(song)
-ggplot(top_song, aes(x=xmas_dist, y=week_position, group=song)) + geom_line(aes(color=label)) + scale_y_reverse() + theme_minimal() + 
+trajectory <- ggplot(top_song, aes(x=xmas_dist, y=week_position, group=song)) + geom_line(aes(color=label)) + scale_y_reverse() + theme_minimal() + 
   labs(x="Days to Christmas", y = "Chart Position") +
   transition_reveal(xmas_dist, )
+animate(trajectory, duration=30,fps=20, width=700, height=600, 
+        renderer=gifski_renderer("tophitstrajectory.gif"))
 ```
+
+A few things:
+
+* Bieber clearly jumped the shark and released his "MISTLETOE" a month too early, but we all forgave him and started jamming to it right at the holiday anyway
+
+* Alternatively, Mariah knew that the absolute best time to release "ALL I WANT FOR CHRISTMAS" was the week before the big day! This one didn't need to go through the typical slow rise to fame, but it did have to deal with a lot of variablity week to week for some wierd reason. 
+
+* Same Old Lang Syne doesn't seem to have the typical drop off that most other holiday songs have. Is this an elsive New Years jam??
+
+### Summary
 
 This project was fun! I learned a few things along the way...namely:
 
@@ -242,6 +277,8 @@ This project was fun! I learned a few things along the way...namely:
 * How to animate ggplots using gganimate
 
 * How to floor dates to decades
+
+
 
 #### Until next time!
 
